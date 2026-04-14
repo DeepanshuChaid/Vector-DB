@@ -1,61 +1,45 @@
-package main 
+package main
 
 import (
 	"fmt"
+	"math"
 )
 
-type Todo struct {
-	Id int `json:"id"`
-	Task string `json:"task"`
+// Vector represents our embedding
+type Vector []float32
+
+// EuclideanDistance calculates L2 distance
+func EuclideanDistance(a, b Vector) float64 {
+	var sum float64
+	for i := range a {
+		diff := float64(a[i] - b[i])
+		sum += diff * diff
+	}
+	return math.Sqrt(sum)
 }
 
-func addTodo(task string) {
-	// --- SQL STEP ---
-	sqliteId := 1
-	
-	// VECTOR DB STEP
-	payload := map[string]interface{}{
-		"ids": []int{sqliteId},
-		"documents": []string{task},
-		"metadatas": []map[string]interface{}{
-			{"id": sqliteId},
-		},
+func main() {
+	// Our "Database"
+	db := map[string]Vector{
+		"apple":  {0.1, 0.2, 0.3},
+		"banana": {0.9, 0.8, 0.7},
+		"cat":    {-0.1, 0.5, -0.2},
 	}
 
-	sendToChroma("/add", payload)
-	fmt.Println("SAVED TO BOTH CHROMA AND SQLITE")
-}
+	// Query vector (something similar to "apple")
+	query := Vector{0.12, 0.18, 0.31}
 
-func SearchTodo(query string) string {
-	serchPayload := map[string]interface{}{
-		"query_texts": []string{query},
-		"n_results": 1,
-	}
+	var bestMatch string
+	minDist := math.MaxFloat64
 
-	response := sendToChroma("/search", serchPayload)
-
-	sqliteId := response["ids"][0].(int)
-
-	var task string
-
-	task = "Buy Milk"
-
-	return task
-}
-
-func sendToChroma(endPoint string, payload interface{}) map[string]interface{} {
-	return map[string]interface{}{
-		"MetaData": []map[string]interface{}{
-			{"sqlite_id": 1}
+	for label, vec := range db {
+		dist := EuclideanDistance(query, vec)
+		fmt.Printf("Distance to %s: %.4f\n", label, dist)
+		if dist < minDist {
+			minDist = dist
+			bestMatch = label
 		}
 	}
-}
 
-
-func main () {
-	addTodo("buy Milk")
-
-	results := SearchTodo("i need something for the fridge")
-
-	fmt.Println("hellow world")
+	fmt.Printf("\nClosest match: %s\n", bestMatch)
 }
